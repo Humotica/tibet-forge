@@ -1,21 +1,14 @@
 # tibet-forge
 
-**From vibe code to trusted tool.**
+**Zero-friction provenance. Built-in trust.**
 
-The Let's Encrypt of AI provenance. Automatic TIBET integration, bloat detection, duplicate checking, and trust scoring.
+Turn any Python project into a certified, auditable tool with one command. Cryptographic provenance baked in, not bolted on.
 
-## The Problem
-
-Vibe coding is loose:
-- No tests
-- No provenance
-- Duplicate of 50 other tools
-- Bloated dependencies
-- Trust = 0
-
-## The Solution
+## Quick Start
 
 ```bash
+pip install tibet-forge
+
 tibet-forge certify ./my-project
 ```
 
@@ -29,68 +22,10 @@ Badge markdown:
 [![Humotica Trust Score](https://img.shields.io/badge/...)]
 ```
 
-## Installation
+## What You Get
 
-```bash
-pip install tibet-forge
-```
-
-## Quick Start
-
-```bash
-# Scan your project
-tibet-forge scan .
-
-# Full certification
-tibet-forge certify .
-
-# Just the score
-tibet-forge score .
-
-# See what would be wrapped
-tibet-forge wrap --dry-run .
-```
-
-## What It Does
-
-### 1. SCAN
-
-Analyzes your code:
-
-- **Bloat Check** - "You import `requests` but only do GET calls"
-- **Duplicate Detection** - "Your RAG parser exists as `rapid-rag`"
-- **Security Scan** - "Hardcoded API key detected"
-- **Quality Check** - README? Tests? Docstrings?
-
-### 2. WRAP
-
-Auto-injects TIBET provenance:
-
-```python
-# Before
-def login(user, password):
-    ...
-
-# After
-@tibet_audit(action="login", erachter="User authentication")
-def login(user, password):
-    ...
-```
-
-### 3. CONNECT
-
-Matches you with similar projects:
-
-```
-Similar Projects Found:
-  • rapid-rag (65% similar)
-    Consider using rapid-rag instead of building your own RAG
-    https://pypi.org/project/rapid-rag/
-```
-
-### 4. CERTIFY
-
-Generates trust score and badge:
+### Trust Scoring
+Gamified quality metrics. See exactly where your code stands:
 
 ```
 Humotica Trust Score: 87/100 (B+)
@@ -99,19 +34,76 @@ Humotica Trust Score: 87/100 (B+)
 ├── Efficiency: 80/100 (weight: 20%)
 ├── Uniqueness: 70/100 (weight: 15%)
 └── Provenance: 100/100 (weight: 15%)
+```
 
-✓ CERTIFIED
+### Zero-Friction Provenance
+TIBET audit trails injected automatically. Every function call tracked, every decision logged:
+
+```python
+# Your code stays clean
+def login(user, password):
+    ...
+
+# tibet-forge adds provenance invisibly
+@tibet_audit(action="login", erachter="User authentication")
+def login(user, password):
+    ...
+```
+
+### Hyper-Optimized Execution
+Bloat detection powered by AST analysis. Know exactly what's slowing you down:
+
+```
+Efficiency Analysis:
+  ✓ No heavy dependencies detected
+  • Consider: httpx instead of requests (3x faster, async-native)
+  • Unused import: 'os' in utils.py
+```
+
+### Smart Deduplication
+Intent hashing finds existing tools that do what you're building:
+
+```
+Similar Projects Found:
+  • rapid-rag (65% similar)
+    Production-ready RAG with TIBET integration
+    https://pypi.org/project/rapid-rag/
+```
+
+## Commands
+
+```bash
+# Full certification with badge
+tibet-forge certify .
+
+# Quick scan
+tibet-forge scan .
+
+# Just the score
+tibet-forge score .
+
+# Preview TIBET injection
+tibet-forge wrap --dry-run .
+
+# Initialize config
+tibet-forge init
 ```
 
 ## Trust Score Components
 
-| Component | Weight | What It Measures |
-|-----------|--------|------------------|
+| Component | Weight | Measures |
+|-----------|--------|----------|
 | Code Quality | 25% | README, tests, docs, types |
 | Security | 25% | No vulns, no hardcoded secrets |
-| Efficiency | 20% | No bloat, no unused imports |
-| Uniqueness | 15% | Not reinventing the wheel |
-| Provenance | 15% | TIBET integration readiness |
+| Efficiency | 20% | No bloat, minimal dependencies |
+| Uniqueness | 15% | Novel contribution, not reinventing |
+| Provenance | 15% | TIBET integration, audit readiness |
+
+## The Badge
+
+Projects scoring 70+ earn the Humotica Trust badge:
+
+[![Humotica Trust Score](https://img.shields.io/badge/Humotica_Trust-87%2F100-brightgreen)](https://humotica.com/trust)
 
 ## Configuration
 
@@ -136,35 +128,20 @@ scan_bloat = true
 min_score_for_badge = 70
 ```
 
-## The Badge
-
-Projects scoring 70+ get the Humotica Trust badge:
-
-[![Humotica Trust Score](https://img.shields.io/badge/Humotica_Trust_Score-87%2F100-green)](https://humotica.com/trust)
-
 ## Why "Forge"?
 
-Like a blacksmith's forge:
-- Takes raw ore (vibe code)
-- Heats it up (analysis)
-- Hammers it (wrapping)
-- Produces strong steel (trusted tool)
+Raw code goes in. Trusted tool comes out.
 
-## Enterprise Use
+Like a blacksmith's forge - heat, hammer, harden. Your vibe code becomes production steel.
 
-"Internal AI scripts must pass tibet-forge with 90+ to reach production."
+## Part of the Humotica Suite
 
-The gamification works:
-- Developers hate security
-- Developers love high scores
-- → Voluntary code improvement
-
-## Links
-
-- [tibet-core](https://github.com/Humotica/tibet-core)
-- [rapid-rag](https://github.com/Humotica/rapid-rag)
-- [oomllama](https://github.com/Humotica/oomllama)
-- [Humotica](https://humotica.com)
+| Package | Focus |
+|---------|-------|
+| [tibet-core](https://pypi.org/project/tibet-core/) | Provenance foundation |
+| [rapid-rag](https://pypi.org/project/rapid-rag/) | RAG in 3 lines |
+| [oomllama](https://pypi.org/project/oomllama/) | Smart LLM routing |
+| **tibet-forge** | Zero-friction certification |
 
 ## License
 
