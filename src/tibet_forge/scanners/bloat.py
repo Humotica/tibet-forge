@@ -140,6 +140,21 @@ class BloatScanner:
                     severity="warning"
                 ))
 
+        # Check for heavy dependencies used in code
+        for imp_name, imp_line in imports.items():
+            if imp_name in HEAVY_DEPS:
+                info = HEAVY_DEPS[imp_name]
+                if imp_name not in self.report.heavy_deps:
+                    self.report.heavy_deps.append(imp_name)
+                    self.report.add_issue(BloatIssue(
+                        file=str(file_path),
+                        line=imp_line,
+                        issue_type="heavy_dep",
+                        description=f"Heavy dependency: {imp_name}",
+                        suggestion=f"Consider: {info['alternative']}",
+                        severity="info"
+                    ))
+
     def _collect_imports(self, tree: ast.AST) -> Dict[str, int]:
         """Collect all imports with line numbers."""
         imports = {}

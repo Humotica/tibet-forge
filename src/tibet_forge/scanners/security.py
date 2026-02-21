@@ -129,6 +129,59 @@ DANGEROUS_PATTERNS = [
         "suggestion": "Enable SSL verification",
         "cwe": "CWE-295"
     },
+    # Hardcoded secrets with common names
+    {
+        "pattern": r"(SECRET|KEY|TOKEN|CREDENTIAL|AUTH)\s*=\s*['\"][^'\"]{8,}['\"]",
+        "type": "hardcoded_secret",
+        "severity": "high",
+        "description": "Hardcoded secret/key detected",
+        "suggestion": "Use environment variables or secrets manager",
+        "cwe": "CWE-798"
+    },
+    # Weak crypto
+    {
+        "pattern": r"hashlib\.md5\s*\(",
+        "type": "weak_crypto",
+        "severity": "medium",
+        "description": "MD5 is cryptographically weak",
+        "suggestion": "Use SHA-256 or stronger: hashlib.sha256()",
+        "cwe": "CWE-328"
+    },
+    {
+        "pattern": r"hashlib\.sha1\s*\(",
+        "type": "weak_crypto",
+        "severity": "low",
+        "description": "SHA1 is deprecated for security use",
+        "suggestion": "Use SHA-256 or stronger",
+        "cwe": "CWE-328"
+    },
+    # Broad exception swallowing
+    {
+        "pattern": r"except\s*(Exception)?:\s*\n\s*(pass|\.\.\.)",
+        "type": "error_handling",
+        "severity": "medium",
+        "description": "Broad exception silently ignored",
+        "suggestion": "Handle specific exceptions or log the error",
+        "cwe": "CWE-390"
+    },
+    # Dangerous string formatting in SQL-like contexts
+    {
+        "pattern": r"f['\"].*\{.*\}.*(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE)",
+        "type": "sql_injection",
+        "severity": "critical",
+        "description": "F-string in SQL query - potential injection",
+        "suggestion": "Use parameterized queries",
+        "cwe": "CWE-89"
+    },
+    # Assert in production (can be disabled with -O)
+    {
+        "pattern": r"^assert\s+",
+        "type": "debug_code",
+        "severity": "low",
+        "description": "Assert can be disabled with python -O",
+        "suggestion": "Use explicit validation instead of assert",
+        "cwe": "CWE-617"
+    },
 ]
 
 
