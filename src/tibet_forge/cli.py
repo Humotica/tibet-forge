@@ -48,6 +48,12 @@ def main():
     init_parser = subparsers.add_parser("init", help="Initialize tibet-forge config")
     init_parser.add_argument("path", nargs="?", default=".", help="Project path")
 
+    # Shame command
+    shame_parser = subparsers.add_parser("shame", help="Hall of Shame - celebrate bad code")
+    shame_parser.add_argument("--submit", type=str, help="Submit a GitHub repo to the Hall of Shame")
+    shame_parser.add_argument("--show", action="store_true", help="Show the Hall of Shame")
+    shame_parser.add_argument("--local", type=str, help="Shame a local project")
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -65,6 +71,8 @@ def main():
         return _cmd_wrap(args)
     elif args.command == "init":
         return _cmd_init(args)
+    elif args.command == "shame":
+        return _cmd_shame(args)
 
     return 0
 
@@ -219,6 +227,90 @@ def _cmd_init(args) -> int:
     config.save(config_file)
 
     console.print(f"[green]Created: {config_file}[/green]")
+    return 0
+
+
+def _cmd_shame(args) -> int:
+    """Hall of Shame command."""
+    from .shame import (
+        HallOfShame, ShameEntry, format_shame_display,
+        determine_shame_category, generate_custom_roast, generate_highlights
+    )
+    from .forge import Forge
+
+    shame_file = Path.home() / ".tibet-forge" / "hall_of_shame.json"
+    shame_file.parent.mkdir(parents=True, exist_ok=True)
+
+    hall = HallOfShame.load(shame_file)
+
+    if args.show or (not args.submit and not args.local):
+        # Show the Hall of Shame
+        console.print(format_shame_display(hall))
+        return 0
+
+    # Shame a project
+    if args.local:
+        project_path = Path(args.local)
+        repo_url = f"local://{project_path.absolute()}"
+        repo_name = project_path.name
+    elif args.submit:
+        repo_url = args.submit
+        # Extract repo name from URL
+        repo_name = args.submit.split("/")[-1].replace(".git", "")
+        # TODO: Clone and scan GitHub repo
+        console.print(f"[yellow]GitHub scanning coming soon![/yellow]")
+        console.print(f"For now, clone the repo and use: tibet-forge shame --local ./path")
+        return 0
+
+    # Scan the project
+    forge = Forge()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        progress.add_task(f"Shaming {repo_name}...", total=None)
+        result = forge.scan(project_path)
+
+    # Determine shame category and generate roast
+    category = determine_shame_category(result)
+    roast = generate_custom_roast(result, category)
+    highlights = generate_highlights(result)
+
+    # Create shame entry
+    entry = ShameEntry(
+        repo_url=repo_url,
+        repo_name=repo_name,
+        score=result.trust_score.total,
+        grade=result.trust_score.grade,
+        category=category,
+        roast=roast,
+        highlights=highlights
+    )
+
+    hall.add_entry(entry)
+    hall.save(shame_file)
+
+    # Display the shame
+    console.print("\n" + "=" * 60)
+    console.print("[bold red]🔥 SHAME ENTRY CREATED 🔥[/bold red]")
+    console.print("=" * 60)
+    console.print(f"\n[bold]{repo_name}[/bold]")
+    console.print(f"Score: [red]{entry.score}/100[/red] ({entry.grade})")
+    console.print(f"Category: [magenta]{entry.category}[/magenta]")
+    console.print(f"\n[italic]\"{entry.roast}\"[/italic]")
+
+    if highlights:
+        console.print("\n[bold]Lowlights:[/bold]")
+        for h in highlights:
+            console.print(f"  💀 {h}")
+
+    # Check for awards
+    if hall.shitcoder_of_month and hall.shitcoder_of_month.shame_id == entry.shame_id:
+        console.print("\n[bold yellow]🏆 CONGRATULATIONS! You are the SHITCODER OF THE MONTH! 🏆[/bold yellow]")
+
+    console.print(f"\n[dim]View all shame: tibet-forge shame --show[/dim]")
+
     return 0
 
 
