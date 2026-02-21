@@ -53,6 +53,9 @@ def main():
     shame_parser.add_argument("--submit", type=str, help="Submit a GitHub repo to the Hall of Shame")
     shame_parser.add_argument("--show", action="store_true", help="Show the Hall of Shame")
     shame_parser.add_argument("--local", type=str, help="Shame a local project")
+    shame_parser.add_argument("--online", action="store_true", help="Submit to public leaderboard")
+    shame_parser.add_argument("--name", type=str, help="Your coder name for the leaderboard")
+    shame_parser.add_argument("--leaderboard", action="store_true", help="Show public leaderboard")
 
     args = parser.parse_args()
 
@@ -232,19 +235,48 @@ def _cmd_init(args) -> int:
 
 def _cmd_shame(args) -> int:
     """Hall of Shame command."""
+    import httpx
     from .shame import (
         HallOfShame, ShameEntry, format_shame_display,
         determine_shame_category, generate_custom_roast, generate_highlights
     )
     from .forge import Forge
 
+    SHAME_API = "https://brein.jaspervandemeent.nl/api/shame"
+
     shame_file = Path.home() / ".tibet-forge" / "hall_of_shame.json"
     shame_file.parent.mkdir(parents=True, exist_ok=True)
 
     hall = HallOfShame.load(shame_file)
 
+    # Show public leaderboard
+    if args.leaderboard:
+        try:
+            resp = httpx.get(f"{SHAME_API}/top3", timeout=10)
+            data = resp.json()
+
+            console.print("\n╔══════════════════════════════════════╗")
+            console.print("║     🏆 HALL OF SHAME LEADERBOARD     ║")
+            console.print("╚══════════════════════════════════════╝\n")
+
+            if data.get("gold"):
+                console.print(f"  🥇 [bold yellow]{data['gold']['coder_name']}[/bold yellow]")
+                console.print(f"     {data['gold']['total_points']} points | Worst: {data['gold']['worst_score']}/100\n")
+            if data.get("silver"):
+                console.print(f"  🥈 [bold white]{data['silver']['coder_name']}[/bold white]")
+                console.print(f"     {data['silver']['total_points']} points | Worst: {data['silver']['worst_score']}/100\n")
+            if data.get("bronze"):
+                console.print(f"  🥉 [bold orange3]{data['bronze']['coder_name']}[/bold orange3]")
+                console.print(f"     {data['bronze']['total_points']} points | Worst: {data['bronze']['worst_score']}/100\n")
+
+            console.print(f"[dim]{data.get('month', 'Current Month')}[/dim]")
+            console.print("\n[dim]Submit your shame: tibet-forge shame --local ./path --online --name YourName[/dim]")
+        except Exception as e:
+            console.print(f"[red]Could not fetch leaderboard: {e}[/red]")
+        return 0
+
     if args.show or (not args.submit and not args.local):
-        # Show the Hall of Shame
+        # Show the local Hall of Shame
         console.print(format_shame_display(hall))
         return 0
 
@@ -255,9 +287,7 @@ def _cmd_shame(args) -> int:
         repo_name = project_path.name
     elif args.submit:
         repo_url = args.submit
-        # Extract repo name from URL
         repo_name = args.submit.split("/")[-1].replace(".git", "")
-        # TODO: Clone and scan GitHub repo
         console.print(f"[yellow]GitHub scanning coming soon![/yellow]")
         console.print(f"For now, clone the repo and use: tibet-forge shame --local ./path")
         return 0
@@ -305,11 +335,53 @@ def _cmd_shame(args) -> int:
         for h in highlights:
             console.print(f"  💀 {h}")
 
-    # Check for awards
+    # Check for local awards
     if hall.shitcoder_of_month and hall.shitcoder_of_month.shame_id == entry.shame_id:
-        console.print("\n[bold yellow]🏆 CONGRATULATIONS! You are the SHITCODER OF THE MONTH! 🏆[/bold yellow]")
+        console.print("\n[bold yellow]🏆 LOCAL SHITCODER OF THE MONTH! 🏆[/bold yellow]")
 
-    console.print(f"\n[dim]View all shame: tibet-forge shame --show[/dim]")
+    # Submit online if requested
+    if args.online:
+        coder_name = args.name
+        if not coder_name:
+            console.print("\n[yellow]Enter your name for the leaderboard:[/yellow]")
+            coder_name = input("> ").strip()
+            if not coder_name:
+                coder_name = "Anonymous Shitcoder"
+
+        try:
+            with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as p:
+                p.add_task("Submitting to public Hall of Shame...", total=None)
+
+                resp = httpx.post(f"{SHAME_API}/submit", json={
+                    "coder_name": coder_name,
+                    "repo_url": repo_url,
+                    "repo_name": repo_name,
+                    "score": entry.score,
+                    "grade": entry.grade,
+                    "category": entry.category,
+                    "roast": entry.roast,
+                    "highlights": entry.highlights
+                }, timeout=10)
+
+            if resp.status_code == 200:
+                data = resp.json()
+                console.print(f"\n[bold green]✓ Submitted to public Hall of Shame![/bold green]")
+                console.print(f"  Points earned: [yellow]{data['points_earned']}[/yellow]")
+                console.print(f"  Total points: [yellow]{data['total_points']}[/yellow]")
+                console.print(f"  Current rank: [cyan]#{data['current_rank']}[/cyan]")
+
+                if data['current_rank'] == 1:
+                    console.print("\n[bold yellow]👑 YOU ARE #1 SHITCODER! 👑[/bold yellow]")
+            else:
+                console.print(f"[red]Submission failed: {resp.text}[/red]")
+        except Exception as e:
+            console.print(f"[red]Could not submit online: {e}[/red]")
+            console.print("[dim]Your shame is saved locally.[/dim]")
+
+    else:
+        console.print(f"\n[dim]Submit to public leaderboard: add --online --name YourName[/dim]")
+
+    console.print(f"[dim]View leaderboard: tibet-forge shame --leaderboard[/dim]")
 
     return 0
 
