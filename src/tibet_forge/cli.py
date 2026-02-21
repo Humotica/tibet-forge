@@ -224,8 +224,23 @@ def _cmd_init(args) -> int:
 
 def _display_result(result) -> None:
     """Display forge result."""
+    score = result.trust_score
+
+    # Grade message with attitude
+    grade_msg = score.grade_message()
+    if score.total >= 90:
+        console.print(f"\n[bold green]{grade_msg}[/bold green] 🚀")
+    elif score.total >= 70:
+        console.print(f"\n[bold blue]{grade_msg}[/bold blue] 🛡️")
+    elif score.total >= 50:
+        console.print(f"\n[bold yellow]{grade_msg}[/bold yellow] 😬")
+    elif score.total >= 25:
+        console.print(f"\n[bold orange1]{grade_msg}[/bold orange1] 🍝")
+    else:
+        console.print(f"\n[bold red]{grade_msg}[/bold red] 🔥")
+
     console.print("\n" + "=" * 60)
-    console.print(result.trust_score.summary())
+    console.print(score.summary())
     console.print("=" * 60)
 
     # Bloat issues
@@ -250,6 +265,15 @@ def _display_result(result) -> None:
             console.print(f"  [blue]•[/blue] {proj.name} ({proj.similarity:.0%} similar)")
             console.print(f"    {proj.suggestion}")
             console.print(f"    {proj.url}")
+
+    # Code smells with roasts
+    if result.quality_report and result.quality_report.smells:
+        console.print("\n[bold magenta]Code Smells (Gordon Ramsay Mode):[/bold magenta]")
+        for smell in result.quality_report.smells[:5]:
+            console.print(f"  [magenta]🔥[/magenta] {smell.file.split('/')[-1]}:{smell.line}")
+            console.print(f"    [italic]{smell.roast}[/italic]")
+            if smell.context:
+                console.print(f"    Context: {smell.context}")
 
 
 if __name__ == "__main__":

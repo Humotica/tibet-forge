@@ -5,7 +5,7 @@ Forge configuration.
 import json
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 
 
 @dataclass

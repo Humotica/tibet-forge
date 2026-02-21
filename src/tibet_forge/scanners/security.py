@@ -5,7 +5,7 @@ Security Scanner - Detect vulnerabilities and bad patterns.
 import ast
 import re
 from pathlib import Path
-from typing import List, Dict, Set
+from typing import List
 from dataclasses import dataclass, field
 
 
@@ -114,10 +114,10 @@ DANGEROUS_PATTERNS = [
         "cwe": "CWE-798"
     },
     {
-        "pattern": r"\.format\s*\([^)]*\)\s*$.*SELECT|INSERT|UPDATE|DELETE",
+        "pattern": r"(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*\.format\s*\(",
         "type": "sql_injection",
         "severity": "critical",
-        "description": "Potential SQL injection - string formatting in query",
+        "description": "SQL query with string formatting - potential injection",
         "suggestion": "Use parameterized queries",
         "cwe": "CWE-89"
     },
@@ -164,9 +164,9 @@ DANGEROUS_PATTERNS = [
         "suggestion": "Handle specific exceptions or log the error",
         "cwe": "CWE-390"
     },
-    # Dangerous string formatting in SQL-like contexts
+    # F-string SQL injection - must have SQL keyword BEFORE the f-string variable
     {
-        "pattern": r"f['\"].*\{.*\}.*(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE)",
+        "pattern": r"f['\"].*(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*\{",
         "type": "sql_injection",
         "severity": "critical",
         "description": "F-string in SQL query - potential injection",
@@ -223,11 +223,28 @@ class SecurityScanner:
         except:
             return
 
+        # Skip scanner files (don't scan ourselves)
+        if "scanners/security.py" in str(file_path):
+            return
+
         lines = content.split("\n")
 
         for pattern_info in DANGEROUS_PATTERNS:
             pattern = pattern_info["pattern"]
             for i, line in enumerate(lines, 1):
+                # Skip pattern definition strings
+                if '"pattern"' in line or "'pattern'" in line:
+                    continue
+                # Skip comments
+                if line.strip().startswith("#"):
+                    continue
+                # Skip string definitions containing patterns (test fixtures, docs)
+                if 'r"' in line or "r'" in line:
+                    continue
+                # Skip lines that are clearly defining patterns/regex
+                if "PATTERN" in line.upper() or "REGEX" in line.upper():
+                    continue
+
                 if re.search(pattern, line, re.IGNORECASE):
                     self.report.add_issue(SecurityIssue(
                         file=str(file_path),

@@ -8,7 +8,7 @@ import ast
 import hashlib
 import re
 from pathlib import Path
-from typing import List, Dict, Set, Optional, Any
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
 
 
@@ -99,12 +99,15 @@ class DuplicateScanner:
         """Scan project for duplicates."""
         self.report = DuplicateReport()
 
+        # Get project name from path
+        project_name = project_path.name
+
         # Extract project intent
         intent_features = self._extract_intent(project_path)
         self.report.intent_hash = self._hash_intent(intent_features)
 
         # Match against known projects
-        self._match_known_projects(intent_features)
+        self._match_known_projects(intent_features, project_name)
 
         # Online check if enabled
         if check_online and self.registry_url:
@@ -172,17 +175,25 @@ class DuplicateScanner:
         ])
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
-    def _match_known_projects(self, features: Dict[str, Any]) -> None:
+    def _match_known_projects(self, features: Dict[str, Any], project_name: str = "") -> None:
         """Match against known projects."""
         all_terms = features["imports"] | features["functions"] | features["keywords"]
 
         for pattern_name, pattern_data in KNOWN_PROJECTS.items():
+            similar = pattern_data["match"]
+
+            # Don't match project against itself
+            if project_name and similar.name.replace("-", "_") in project_name.replace("-", "_"):
+                continue
+            # Skip if this IS the known project (scanning tibet-forge shouldn't match tibet-*)
+            if "tibet" in project_name.lower() and "tibet" in similar.name.lower():
+                continue
+
             patterns = pattern_data["patterns"]
             matches = sum(1 for p in patterns if p in all_terms)
             similarity = matches / len(patterns)
 
             if similarity >= 0.4:  # 40% match threshold
-                similar = pattern_data["match"]
                 similar.similarity = similarity
                 self.report.similar_projects.append(similar)
 

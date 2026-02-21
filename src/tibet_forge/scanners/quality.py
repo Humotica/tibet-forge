@@ -1,12 +1,33 @@
 """
 Quality Scanner - Code quality and documentation checks.
+
+The Gordon Ramsay of code review.
 """
 
 import ast
-import re
 from pathlib import Path
-from typing import List, Dict, Set
+from typing import List
 from dataclasses import dataclass, field
+
+
+# Gordon Ramsay-style roasts for code smells
+ROASTS = {
+    "long_name": "If you keep using sentences like this to code, you'd better start coding tea parties.",
+    "arrow_pattern": "Are we building software or a staircase to hell? Flatten this out.",
+    "except_pass": "Catching all exceptions and doing nothing? Just close your eyes while driving on the highway, it's the same thing.",
+    "god_file": "This file is longer than a CVS receipt. Break it up before it gains sentience.",
+    "llm_artifact": "You left the AI's polite small talk in your codebase. Clean up your room.",
+}
+
+
+@dataclass
+class CodeSmell:
+    """A detected code smell with a roast."""
+    file: str
+    line: int
+    smell_type: str
+    roast: str
+    context: str = ""
 
 
 @dataclass
@@ -26,6 +47,7 @@ class QualityReport:
     total_classes: int = 0
     documented_classes: int = 0
 
+    smells: List[CodeSmell] = field(default_factory=list)
     score: int = 0
 
     def calculate_score(self):
@@ -120,9 +142,50 @@ class QualityScanner:
         except:
             return
 
+        lines = content.split("\n")
+        filename = str(file_path)
+
+        # Check for God File (>1000 lines)
+        if len(lines) > 1000:
+            self.report.smells.append(CodeSmell(
+                file=filename, line=1, smell_type="god_file",
+                roast=ROASTS["god_file"],
+                context=f"{len(lines)} lines"
+            ))
+
+        # Check for LLM artifacts
+        llm_patterns = ["Sure, here is", "Here's the code", "I'll help you",
+                       "Let me explain", "As an AI", "I cannot"]
+        for i, line in enumerate(lines, 1):
+            for pattern in llm_patterns:
+                if pattern in line and ('"""' in line or "'''" in line or "#" in line):
+                    self.report.smells.append(CodeSmell(
+                        file=filename, line=i, smell_type="llm_artifact",
+                        roast=ROASTS["llm_artifact"],
+                        context=line.strip()[:50]
+                    ))
+                    break
+
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
                 self.report.total_functions += 1
+
+                # Check for long names (>35 chars)
+                if len(node.name) > 35:
+                    self.report.smells.append(CodeSmell(
+                        file=filename, line=node.lineno, smell_type="long_name",
+                        roast=ROASTS["long_name"],
+                        context=node.name
+                    ))
+
+                # Check for arrow anti-pattern (nested depth > 3)
+                depth = self._max_nesting_depth(node)
+                if depth > 3:
+                    self.report.smells.append(CodeSmell(
+                        file=filename, line=node.lineno, smell_type="arrow_pattern",
+                        roast=ROASTS["arrow_pattern"],
+                        context=f"Nesting depth: {depth}"
+                    ))
 
                 # Check docstring
                 if (node.body and isinstance(node.body[0], ast.Expr) and
@@ -139,8 +202,38 @@ class QualityScanner:
             elif isinstance(node, ast.ClassDef):
                 self.report.total_classes += 1
 
+                # Check for long class names
+                if len(node.name) > 35:
+                    self.report.smells.append(CodeSmell(
+                        file=filename, line=node.lineno, smell_type="long_name",
+                        roast=ROASTS["long_name"],
+                        context=node.name
+                    ))
+
                 # Check docstring
                 if (node.body and isinstance(node.body[0], ast.Expr) and
                     isinstance(node.body[0].value, ast.Constant) and
                     isinstance(node.body[0].value.value, str)):
                     self.report.documented_classes += 1
+
+            # Check for except pass
+            elif isinstance(node, ast.ExceptHandler):
+                if node.body and len(node.body) == 1:
+                    if isinstance(node.body[0], ast.Pass):
+                        self.report.smells.append(CodeSmell(
+                            file=filename, line=node.lineno, smell_type="except_pass",
+                            roast=ROASTS["except_pass"],
+                            context="except: pass"
+                        ))
+
+    def _max_nesting_depth(self, node: ast.AST, current: int = 0) -> int:
+        """Calculate maximum nesting depth of for/if/while loops."""
+        max_depth = current
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.For, ast.While, ast.If, ast.With)):
+                child_depth = self._max_nesting_depth(child, current + 1)
+                max_depth = max(max_depth, child_depth)
+            else:
+                child_depth = self._max_nesting_depth(child, current)
+                max_depth = max(max_depth, child_depth)
+        return max_depth

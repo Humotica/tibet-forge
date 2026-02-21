@@ -7,7 +7,7 @@ The magic that makes vibe code trustworthy.
 import ast
 import re
 from pathlib import Path
-from typing import List, Set, Tuple
+from typing import List, Tuple
 
 
 class TibetInjector:

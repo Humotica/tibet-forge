@@ -121,6 +121,12 @@ class BloatScanner:
         except SyntaxError:
             return
 
+        # Skip __init__.py files - they often have intentional re-exports
+        if file_path.name == "__init__.py":
+            # Check for __all__ - if present, imports are intentional exports
+            if "__all__" in content:
+                return
+
         # Collect imports and usages
         imports = self._collect_imports(tree)
         usages = self._collect_usages(tree, content)
@@ -173,15 +179,30 @@ class BloatScanner:
         return imports
 
     def _collect_usages(self, tree: ast.AST, content: str) -> Set[str]:
-        """Collect all name usages."""
+        """Collect all name usages including type annotations."""
         usages = set()
 
+        # Walk entire tree and collect all Name nodes
         for node in ast.walk(tree):
             if isinstance(node, ast.Name):
                 usages.add(node.id)
             elif isinstance(node, ast.Attribute):
                 if isinstance(node.value, ast.Name):
                     usages.add(node.value.id)
+
+        # Also search content for typing patterns (backup for complex annotations)
+        typing_patterns = ["Optional", "List", "Dict", "Set", "Tuple", "Any",
+                          "Union", "Callable", "Type", "Sequence", "Mapping"]
+        for tp in typing_patterns:
+            # If used in annotation context (after : or ->)
+            if f": {tp}" in content or f"-> {tp}" in content or f"[{tp}" in content:
+                usages.add(tp)
+
+        # Dataclass field usage
+        if "field(" in content:
+            usages.add("field")
+        if "@dataclass" in content:
+            usages.add("dataclass")
 
         return usages
 

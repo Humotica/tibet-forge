@@ -5,7 +5,7 @@ The gamification layer - developers want high scores!
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Any
+from typing import List
 from datetime import datetime
 
 
@@ -59,28 +59,29 @@ class TrustScore:
     @staticmethod
     def _grade_from_score(score: int) -> str:
         """Convert score to letter grade."""
-        if score >= 95:
-            return "A+"
-        elif score >= 90:
+        if score >= 90:
             return "A"
-        elif score >= 85:
-            return "A-"
-        elif score >= 80:
-            return "B+"
-        elif score >= 75:
-            return "B"
         elif score >= 70:
-            return "B-"
-        elif score >= 65:
-            return "C+"
-        elif score >= 60:
-            return "C"
-        elif score >= 55:
-            return "C-"
+            return "B"
         elif score >= 50:
+            return "C"
+        elif score >= 25:
             return "D"
         else:
             return "F"
+
+    def grade_message(self) -> str:
+        """Get the TIBET grade message with attitude."""
+        if self.total >= 90:
+            return "[A] FUCKING AWESOME! Fully grounded, zero bloat. Push to production."
+        elif self.total >= 70:
+            return "[B] Solid. Foundation stands, but throw a @tibet_audit wrapper on it."
+        elif self.total >= 50:
+            return "[C] Dangerous territory. It 'works', but the CISO gets hives from this."
+        elif self.total >= 25:
+            return "[D] Heavily over-engineered. Stop hallucinating and just use httpx."
+        else:
+            return "[F] SHIT. This is a digital crime. Delete the repo and start over."
 
     def add_component(
         self,

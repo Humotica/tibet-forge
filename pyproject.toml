@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tibet-forge"
-version = "0.2.0"
+version = "0.3.0"
 description = "From vibe code to trusted tool. Automatic TIBET provenance, bloat detection, duplicate checking, and trust scoring."
 readme = "README.md"
 license = {text = "MIT"}
