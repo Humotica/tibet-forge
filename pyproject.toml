@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tibet-forge"
+version = "0.1.0"
+description = "From vibe code to trusted tool. Automatic TIBET provenance, bloat detection, duplicate checking, and trust scoring."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "J. van de Meent", email = "jasper@humotica.com"},
+    {name = "R. AI", email = "info@humotica.com"},
+    {name = "Gemini IDD"},
+]
+keywords = [
+    "tibet", "forge", "trust", "provenance", "audit",
+    "vibe-coding", "code-quality", "security", "bloat",
+    "certification", "badge", "ci-cd", "ai-native"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Security",
+]
+dependencies = [
+    "tibet-core>=0.2.0",
+    "httpx>=0.24.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+full = ["tree-sitter>=0.20.0", "semgrep>=1.0.0"]
+dev = ["pytest>=7.0", "ruff>=0.1.0"]
+
+[project.urls]
+Homepage = "https://humotica.com"
+Repository = "https://github.com/humotica/tibet-forge"
+
+[project.scripts]
+tibet-forge = "tibet_forge.cli:main"
+forge = "tibet_forge.cli:main"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tibet_forge"]
