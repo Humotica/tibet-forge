@@ -23,9 +23,10 @@ The vibe coder doesn't need to understand TIBET.
 It just works. Like HTTPS.
 """
 
-from .forge import Forge
+from .forge import Forge, ForgeResult
 from .score import TrustScore
 from .config import ForgeConfig
+from . import mirror
 
-__version__ = "0.1.0"
-__all__ = ["Forge", "TrustScore", "ForgeConfig"]
+__version__ = "0.6.0"
+__all__ = ["Forge", "ForgeResult", "TrustScore", "ForgeConfig", "mirror"]

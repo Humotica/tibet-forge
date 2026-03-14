@@ -45,6 +45,10 @@ class ForgeConfig:
     check_duplicates_online: bool = True
     suggest_collaborations: bool = True
 
+    # Transparency Mirror
+    mirror_url: str = "https://brein.jaspervandemeent.nl"
+    no_mirror: bool = False
+
     # Certification
     min_score_for_badge: int = 70
     badge_style: str = "flat"  # flat, flat-square, plastic
@@ -60,20 +64,32 @@ class ForgeConfig:
             for name in ["tibet-forge.json", ".tibetrc", ".tibet-forge.json"]:
                 config_file = path / name
                 if config_file.exists():
-                    return cls.from_json(config_file)
+                    config = cls.from_json(config_file)
+                    if config.no_mirror:
+                        config.mirror_url = ""
+                    return config
 
             # Try pyproject.toml
             pyproject = path / "pyproject.toml"
             if pyproject.exists():
-                return cls.from_pyproject(pyproject)
+                config = cls.from_pyproject(pyproject)
+                if config.no_mirror:
+                    config.mirror_url = ""
+                return config
 
             # Default config
             return cls()
 
         elif path.suffix == ".json" or path.name == ".tibetrc":
-            return cls.from_json(path)
+            config = cls.from_json(path)
+            if config.no_mirror:
+                config.mirror_url = ""
+            return config
         elif path.name == "pyproject.toml":
-            return cls.from_pyproject(path)
+            config = cls.from_pyproject(path)
+            if config.no_mirror:
+                config.mirror_url = ""
+            return config
         else:
             return cls()
 

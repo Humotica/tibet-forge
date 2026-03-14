@@ -9,6 +9,16 @@ from typing import List
 from datetime import datetime
 
 
+# Humotica logo as minimal SVG, base64-encoded for shields.io
+# A small "H" mark in a shield shape
+HUMOTICA_LOGO_B64 = (
+    "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAx"
+    "NiAxNiI+PHRleHQgeD0iMiIgeT0iMTMiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtZmFtaWx5PSJz"
+    "YW5zLXNlcmlmIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiPkg8L3RleHQ+PC9z"
+    "dmc+"
+)
+
+
 @dataclass
 class ScoreComponent:
     """Individual score component."""
@@ -27,9 +37,9 @@ class TrustScore:
     Components:
     - Code Quality (25%)
     - Security (25%)
-    - Provenance (20%)
-    - Documentation (15%)
-    - Community (15%)
+    - Efficiency (20%)
+    - Uniqueness (15%)
+    - Provenance (15%)
     """
 
     total: int = 0
@@ -104,16 +114,18 @@ class TrustScore:
     def to_badge_url(self, style: str = "flat") -> str:
         """Generate shields.io badge URL."""
         color = self._color_from_score(self.total)
+        grade_label = f"{self.total}%2F100 ({self.grade})"
         return (
             f"https://img.shields.io/badge/"
-            f"Humotica_Trust_Score-{self.total}%2F100-{color}"
-            f"?style={style}&logo=data:image/svg+xml;base64,..."
+            f"Humotica_Trust-{grade_label}-{color}"
+            f"?style={style}"
+            f"&logo=data:image/svg+xml;base64,{HUMOTICA_LOGO_B64}"
         )
 
     def to_badge_markdown(self, style: str = "flat") -> str:
-        """Generate markdown badge."""
+        """Generate markdown badge linking to Transparency Mirror."""
         url = self.to_badge_url(style)
-        return f"[![Humotica Trust Score]({url})](https://humotica.com/trust)"
+        return f"[![Humotica Trust Score]({url})](https://brein.jaspervandemeent.nl/api/tbz-mirror/analytics)"
 
     @staticmethod
     def _color_from_score(score: int) -> str:

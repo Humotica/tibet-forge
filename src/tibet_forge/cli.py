@@ -29,11 +29,12 @@ def main():
     scan_parser.add_argument("--no-bloat", action="store_true", help="Skip bloat check")
     scan_parser.add_argument("--no-duplicates", action="store_true", help="Skip duplicate check")
     scan_parser.add_argument("--no-security", action="store_true", help="Skip security check")
+    scan_parser.add_argument("--no-mirror", action="store_true", help="Skip Mirror lookup")
 
     # Certify command
     certify_parser = subparsers.add_parser("certify", help="Full certification pipeline")
     certify_parser.add_argument("path", nargs="?", default=".", help="Project path")
-    certify_parser.add_argument("--no-wrap", action="store_true", help="Don't auto-wrap")
+    certify_parser.add_argument("--no-mirror", action="store_true", help="Skip Mirror registration")
 
     # Score command
     score_parser = subparsers.add_parser("score", help="Show trust score only")
@@ -83,14 +84,11 @@ def main():
 def _show_banner():
     """Show tibet-forge banner."""
     banner = """
-╔════════════════════════════════════════════════════════╗
-║                    tibet-forge                          ║
-║         From vibe code to trusted tool                  ║
-║                                                         ║
-║  The Let's Encrypt of AI provenance                     ║
-╚════════════════════════════════════════════════════════╝
+[bold blue]tibet-forge[/bold blue] v0.6.0
+From vibe code to trusted tool.
+The Let's Encrypt of AI provenance.
 """
-    console.print(banner, style="bold blue")
+    console.print(Panel(banner.strip(), border_style="blue"))
 
 
 def _cmd_scan(args) -> int:
@@ -107,6 +105,8 @@ def _cmd_scan(args) -> int:
     config.scan_bloat = not args.no_bloat
     config.scan_duplicates = not args.no_duplicates
     config.scan_security = not args.no_security
+    if args.no_mirror:
+        config.mirror_url = ""
 
     forge = Forge(config)
 
@@ -119,6 +119,7 @@ def _cmd_scan(args) -> int:
         result = forge.scan(path)
 
     _display_result(result)
+    _display_mirror(result)
     return 0
 
 
@@ -133,7 +134,8 @@ def _cmd_certify(args) -> int:
         return 1
 
     config = ForgeConfig()
-    config.auto_wrap = not args.no_wrap
+    if args.no_mirror:
+        config.mirror_url = ""
 
     forge = Forge(config)
 
@@ -148,10 +150,17 @@ def _cmd_certify(args) -> int:
     _display_result(result)
 
     if result.certified:
-        console.print("\n[bold green]✓ CERTIFIED[/bold green]")
-        console.print(f"\nBadge markdown:\n{result.badge_markdown}")
+        console.print("\n[bold green]CERTIFIED[/bold green]")
+        console.print(f"\nBadge markdown:\n[dim]{result.badge_markdown}[/dim]")
     else:
         console.print(f"\n[yellow]Not certified (score {result.trust_score.total} < 70)[/yellow]")
+
+    _display_mirror(result)
+
+    if result.jis_id:
+        console.print(f"\n  JIS ID: [cyan]{result.jis_id}[/cyan]")
+    if result.source_repo:
+        console.print(f"  Source: [cyan]{result.source_repo}[/cyan]")
 
     return 0
 
@@ -209,6 +218,8 @@ def _cmd_wrap(args) -> int:
 
     if args.dry_run:
         console.print("\n[yellow]Dry run - no changes made[/yellow]")
+    elif report["injection_points"] == 0:
+        console.print("\n[dim]No injection points found.[/dim]")
     else:
         console.print("\n[green]Injections applied[/green]")
 
@@ -230,6 +241,7 @@ def _cmd_init(args) -> int:
     config.save(config_file)
 
     console.print(f"[green]Created: {config_file}[/green]")
+    console.print("[dim]Tip: add .jis.json for identity binding (tbz init)[/dim]")
     return 0
 
 
@@ -256,17 +268,17 @@ def _cmd_shame(args) -> int:
             data = resp.json()
 
             console.print("\n╔══════════════════════════════════════╗")
-            console.print("║     🏆 HALL OF SHAME LEADERBOARD     ║")
+            console.print("║     HALL OF SHAME LEADERBOARD        ║")
             console.print("╚══════════════════════════════════════╝\n")
 
             if data.get("gold"):
-                console.print(f"  🥇 [bold yellow]{data['gold']['coder_name']}[/bold yellow]")
+                console.print(f"  1. [bold yellow]{data['gold']['coder_name']}[/bold yellow]")
                 console.print(f"     {data['gold']['total_points']} points | Worst: {data['gold']['worst_score']}/100\n")
             if data.get("silver"):
-                console.print(f"  🥈 [bold white]{data['silver']['coder_name']}[/bold white]")
+                console.print(f"  2. [bold white]{data['silver']['coder_name']}[/bold white]")
                 console.print(f"     {data['silver']['total_points']} points | Worst: {data['silver']['worst_score']}/100\n")
             if data.get("bronze"):
-                console.print(f"  🥉 [bold orange3]{data['bronze']['coder_name']}[/bold orange3]")
+                console.print(f"  3. [bold orange3]{data['bronze']['coder_name']}[/bold orange3]")
                 console.print(f"     {data['bronze']['total_points']} points | Worst: {data['bronze']['worst_score']}/100\n")
 
             console.print(f"[dim]{data.get('month', 'Current Month')}[/dim]")
@@ -323,7 +335,7 @@ def _cmd_shame(args) -> int:
 
     # Display the shame
     console.print("\n" + "=" * 60)
-    console.print("[bold red]🔥 SHAME ENTRY CREATED 🔥[/bold red]")
+    console.print("[bold red]SHAME ENTRY CREATED[/bold red]")
     console.print("=" * 60)
     console.print(f"\n[bold]{repo_name}[/bold]")
     console.print(f"Score: [red]{entry.score}/100[/red] ({entry.grade})")
@@ -333,11 +345,11 @@ def _cmd_shame(args) -> int:
     if highlights:
         console.print("\n[bold]Lowlights:[/bold]")
         for h in highlights:
-            console.print(f"  💀 {h}")
+            console.print(f"  - {h}")
 
     # Check for local awards
     if hall.shitcoder_of_month and hall.shitcoder_of_month.shame_id == entry.shame_id:
-        console.print("\n[bold yellow]🏆 LOCAL SHITCODER OF THE MONTH! 🏆[/bold yellow]")
+        console.print("\n[bold yellow]LOCAL SHITCODER OF THE MONTH![/bold yellow]")
 
     # Submit online if requested
     if args.online:
@@ -365,13 +377,13 @@ def _cmd_shame(args) -> int:
 
             if resp.status_code == 200:
                 data = resp.json()
-                console.print(f"\n[bold green]✓ Submitted to public Hall of Shame![/bold green]")
+                console.print(f"\n[bold green]Submitted to public Hall of Shame![/bold green]")
                 console.print(f"  Points earned: [yellow]{data['points_earned']}[/yellow]")
                 console.print(f"  Total points: [yellow]{data['total_points']}[/yellow]")
                 console.print(f"  Current rank: [cyan]#{data['current_rank']}[/cyan]")
 
                 if data['current_rank'] == 1:
-                    console.print("\n[bold yellow]👑 YOU ARE #1 SHITCODER! 👑[/bold yellow]")
+                    console.print("\n[bold yellow]YOU ARE #1 SHITCODER![/bold yellow]")
             else:
                 console.print(f"[red]Submission failed: {resp.text}[/red]")
         except Exception as e:
@@ -393,15 +405,15 @@ def _display_result(result) -> None:
     # Grade message with attitude
     grade_msg = score.grade_message()
     if score.total >= 90:
-        console.print(f"\n[bold green]{grade_msg}[/bold green] 🚀")
+        console.print(f"\n[bold green]{grade_msg}[/bold green]")
     elif score.total >= 70:
-        console.print(f"\n[bold blue]{grade_msg}[/bold blue] 🛡️")
+        console.print(f"\n[bold blue]{grade_msg}[/bold blue]")
     elif score.total >= 50:
-        console.print(f"\n[bold yellow]{grade_msg}[/bold yellow] 😬")
+        console.print(f"\n[bold yellow]{grade_msg}[/bold yellow]")
     elif score.total >= 25:
-        console.print(f"\n[bold orange1]{grade_msg}[/bold orange1] 🍝")
+        console.print(f"\n[bold orange1]{grade_msg}[/bold orange1]")
     else:
-        console.print(f"\n[bold red]{grade_msg}[/bold red] 🔥")
+        console.print(f"\n[bold red]{grade_msg}[/bold red]")
 
     console.print("\n" + "=" * 60)
     console.print(score.summary())
@@ -411,22 +423,22 @@ def _display_result(result) -> None:
     if result.bloat_report and result.bloat_report.issues:
         console.print("\n[bold]Bloat Issues:[/bold]")
         for issue in result.bloat_report.issues[:5]:
-            console.print(f"  [yellow]•[/yellow] {issue.description}")
-            console.print(f"    → {issue.suggestion}")
+            console.print(f"  [yellow]-[/yellow] {issue.description}")
+            console.print(f"    -> {issue.suggestion}")
 
     # Security issues
     if result.security_report and result.security_report.issues:
         console.print("\n[bold]Security Issues:[/bold]")
         for issue in result.security_report.issues[:5]:
             color = "red" if issue.severity in ["critical", "high"] else "yellow"
-            console.print(f"  [{color}]•[/{color}] [{issue.severity.upper()}] {issue.description}")
-            console.print(f"    → {issue.suggestion}")
+            console.print(f"  [{color}]-[/{color}] [{issue.severity.upper()}] {issue.description}")
+            console.print(f"    -> {issue.suggestion}")
 
     # Similar projects
     if result.duplicate_report and result.duplicate_report.similar_projects:
         console.print("\n[bold]Similar Projects Found:[/bold]")
         for proj in result.duplicate_report.similar_projects:
-            console.print(f"  [blue]•[/blue] {proj.name} ({proj.similarity:.0%} similar)")
+            console.print(f"  [blue]-[/blue] {proj.name} ({proj.similarity:.0%} similar)")
             console.print(f"    {proj.suggestion}")
             console.print(f"    {proj.url}")
 
@@ -434,10 +446,36 @@ def _display_result(result) -> None:
     if result.quality_report and result.quality_report.smells:
         console.print("\n[bold magenta]Code Smells (Gordon Ramsay Mode):[/bold magenta]")
         for smell in result.quality_report.smells[:5]:
-            console.print(f"  [magenta]🔥[/magenta] {smell.file.split('/')[-1]}:{smell.line}")
+            console.print(f"  [magenta]*[/magenta] {smell.file.split('/')[-1]}:{smell.line}")
             console.print(f"    [italic]{smell.roast}[/italic]")
             if smell.context:
                 console.print(f"    Context: {smell.context}")
+
+
+def _display_mirror(result) -> None:
+    """Display Mirror status."""
+    if not result.content_hash:
+        return
+
+    console.print(f"\n  Hash: [dim]{result.content_hash}[/dim]")
+
+    if result.mirror_status == "known":
+        entry = result.mirror_entry or {}
+        first_seen = entry.get("first_seen", "unknown")
+        attestations = entry.get("attestations", [])
+        verdicts = [a.get("verdict", "?") for a in attestations]
+        console.print("  Mirror: [bold green]KNOWN[/bold green]")
+        console.print(f"    First seen:   {first_seen}")
+        if verdicts:
+            console.print(f"    Attestations: {len(attestations)} ({', '.join(verdicts)})")
+    elif result.mirror_status == "unknown":
+        console.print("  Mirror: [yellow]UNKNOWN[/yellow] — not yet registered")
+    elif result.mirror_status == "registered":
+        console.print("  Mirror: [bold green]registered[/bold green]")
+    elif result.mirror_status == "already_registered":
+        console.print("  Mirror: [green]already registered[/green]")
+    elif result.mirror_status == "error":
+        console.print("  Mirror: [dim]WARNING — could not connect[/dim]")
 
 
 if __name__ == "__main__":
